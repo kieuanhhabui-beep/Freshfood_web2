@@ -2,11 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import PrintBill from './components/PrintBill'
 
-
-// ======================================================
-// APP CHÍNH
-// ======================================================
-
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -16,47 +11,30 @@ function App() {
   const [loginMessage, setLoginMessage] = useState('')
 
   const [page, setPage] = useState('dashboard')
-
   const [selectedOrder, setSelectedOrder] = useState(null)
 
   const [todayOrders, setTodayOrders] = useState([])
   const [todayRevenue, setTodayRevenue] = useState(0)
 
-
-  // ====================================================
-  // KIỂM TRA ĐĂNG NHẬP
-  // ====================================================
-
   useEffect(() => {
     async function getSession() {
       const { data } = await supabase.auth.getSession()
-
       setSession(data.session)
-
       setLoading(false)
     }
 
     getSession()
 
-
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession)
-      }
-    )
-
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession)
+    })
 
     return () => {
       subscription.unsubscribe()
     }
   }, [])
-
-
-  // ====================================================
-  // LOAD ĐƠN HÔM NAY SAU KHI LOGIN
-  // ====================================================
 
   useEffect(() => {
     if (session) {
@@ -64,110 +42,60 @@ function App() {
     }
   }, [session])
 
-
-  // ====================================================
-  // LOAD ĐƠN HÔM NAY
-  // ====================================================
-
   async function loadTodayOrders() {
     const today = new Date()
-
     today.setHours(0, 0, 0, 0)
-
 
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .gte('created_at', today.toISOString())
-      .order('created_at', {
-        ascending: false,
+      .order('order_code', {
+        ascending: true,
       })
 
-
     if (error) {
-      console.error(
-        'Lỗi tải đơn:',
-        error
-      )
-
+      console.error('Lỗi tải đơn:', error)
       return
     }
-
 
     const orders = data || []
 
     setTodayOrders(orders)
 
-
     const revenue = orders
-      .filter(
-        (order) =>
-          order.order_status !== 'CANCELLED'
-      )
-      .reduce(
-        (sum, order) =>
-          sum +
-          Number(order.total || 0),
-
-        0
-      )
-
+      .filter((order) => order.order_status !== 'CANCELLED')
+      .reduce((sum, order) => {
+        return sum + Number(order.total || 0)
+      }, 0)
 
     setTodayRevenue(revenue)
   }
 
-
-  // ====================================================
-  // LOGIN
-  // ====================================================
-
   async function handleLogin(e) {
     e.preventDefault()
 
-    setLoginMessage(
-      'Đang đăng nhập...'
-    )
+    setLoginMessage('Đang đăng nhập...')
 
-
-    const { error } =
-      await supabase.auth.signInWithPassword(
-        {
-          email,
-          password,
-        }
-      )
-
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
     if (error) {
-      setLoginMessage(
-        'Đăng nhập thất bại: ' +
-          error.message
-      )
-
+      setLoginMessage('Đăng nhập thất bại: ' + error.message)
       return
     }
 
-
     setLoginMessage('')
   }
-
-
-  // ====================================================
-  // LOGOUT
-  // ====================================================
 
   async function handleLogout() {
     await supabase.auth.signOut()
 
     setPage('dashboard')
-
     setSelectedOrder(null)
   }
-
-
-  // ====================================================
-  // LOADING
-  // ====================================================
 
   if (loading) {
     return (
@@ -182,11 +110,6 @@ function App() {
     )
   }
 
-
-  // ====================================================
-  // CHƯA LOGIN
-  // ====================================================
-
   if (!session) {
     return (
       <LoginPage
@@ -200,85 +123,50 @@ function App() {
     )
   }
 
-
-  // ====================================================
-  // TRANG TẠO ĐƠN
-  // ====================================================
-
   if (page === 'new-order') {
     return (
       <NewOrder
         onBack={() => {
           setPage('dashboard')
         }}
-
         onCreated={() => {
           setPage('dashboard')
-
           loadTodayOrders()
         }}
       />
     )
   }
 
-
-  // ====================================================
-  // TRANG CHI TIẾT ĐƠN
-  // ====================================================
-
-  if (
-    page === 'order-detail' &&
-    selectedOrder
-  ) {
+  if (page === 'order-detail' && selectedOrder) {
     return (
       <OrderDetail
         order={selectedOrder}
-
         onBack={() => {
           setSelectedOrder(null)
-
           setPage('dashboard')
         }}
-
-        onUpdated={async (
-          updatedOrder
-        ) => {
-          setSelectedOrder(
-            updatedOrder
-          )
-
+        onUpdated={async (updatedOrder) => {
+          setSelectedOrder(updatedOrder)
           await loadTodayOrders()
         }}
       />
     )
   }
 
+  const delivering = todayOrders.filter(
+    (order) => order.order_status === 'DELIVERING'
+  ).length
 
-  // ====================================================
-  // DASHBOARD
-  // ====================================================
-
-  const delivering =
-    todayOrders.filter(
-      (order) =>
-        order.order_status ===
-        'DELIVERING'
-    ).length
-
-
-  const unpaid =
-    todayOrders.filter(
-      (order) =>
-        order.payment_status !== 'PAID'
-    ).length
-
+  const unpaid = todayOrders.filter(
+    (order) => order.payment_status !== 'PAID'
+  ).length
 
   return (
     <div
       style={{
         minHeight: '100vh',
         background: '#f5f7f4',
-        padding: '30px',
+        padding: 30,
         boxSizing: 'border-box',
         fontFamily: 'Arial, sans-serif',
       }}
@@ -289,19 +177,14 @@ function App() {
           margin: '0 auto',
         }}
       >
-
-        {/* HEADER */}
-
         <div
           style={{
             display: 'flex',
-            justifyContent:
-              'space-between',
+            justifyContent: 'space-between',
             alignItems: 'flex-start',
             marginBottom: 30,
           }}
         >
-
           <div>
             <h1
               style={{
@@ -322,36 +205,27 @@ function App() {
             </p>
           </div>
 
-
           <button
             onClick={handleLogout}
-
             style={{
               padding: '10px 16px',
               background: '#fff',
-              border:
-                '1px solid #ccc',
+              border: '1px solid #ccc',
               borderRadius: 8,
               cursor: 'pointer',
             }}
           >
             Đăng xuất
           </button>
-
         </div>
-
-
-        {/* DASHBOARD CARDS */}
 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns:
-              'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 20,
           }}
         >
-
           <DashboardCard
             title="Đơn hôm nay"
             value={`${todayOrders.length} đơn`}
@@ -359,9 +233,7 @@ function App() {
 
           <DashboardCard
             title="Doanh thu hôm nay"
-            value={`${todayRevenue.toLocaleString(
-              'vi-VN'
-            )}đ`}
+            value={`${todayRevenue.toLocaleString('vi-VN')}đ`}
           />
 
           <DashboardCard
@@ -373,11 +245,7 @@ function App() {
             title="Chưa thanh toán"
             value={`${unpaid} đơn`}
           />
-
         </div>
-
-
-        {/* BUTTON TẠO ĐƠN */}
 
         <div
           style={{
@@ -386,10 +254,7 @@ function App() {
           }}
         >
           <button
-            onClick={() =>
-              setPage('new-order')
-            }
-
+            onClick={() => setPage('new-order')}
             style={{
               padding: '16px 30px',
               background: '#2f855a',
@@ -404,15 +269,11 @@ function App() {
           </button>
         </div>
 
-
-        {/* DANH SÁCH ĐƠN */}
-
         <div
           style={{
             marginTop: 45,
           }}
         >
-
           <h2
             style={{
               textAlign: 'center',
@@ -421,9 +282,7 @@ function App() {
             Đơn hàng hôm nay
           </h2>
 
-
           {todayOrders.length === 0 ? (
-
             <p
               style={{
                 textAlign: 'center',
@@ -432,9 +291,7 @@ function App() {
             >
               Chưa có đơn hàng hôm nay.
             </p>
-
           ) : (
-
             <div
               style={{
                 background: '#fff',
@@ -442,138 +299,69 @@ function App() {
                 overflow: 'hidden',
               }}
             >
+              {todayOrders.map((order) => (
+                <div
+                  key={order.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1.4fr 2fr 1fr 1.4fr auto',
+                    gap: 15,
+                    padding: 18,
+                    borderBottom: '1px solid #eee',
+                    alignItems: 'center',
+                  }}
+                >
+                  <strong>{order.order_code}</strong>
 
-              {todayOrders.map(
-                (order) => (
+                  <div>
+                    <strong>{order.customer_name}</strong>
 
-                  <div
-                    key={order.id}
-
-                    style={{
-                      display: 'grid',
-
-                      gridTemplateColumns:
-                        '1.4fr 2fr 1fr 1.4fr auto',
-
-                      gap: 15,
-
-                      padding: 18,
-
-                      borderBottom:
-                        '1px solid #eee',
-
-                      alignItems:
-                        'center',
-                    }}
-                  >
-
-                    {/* MÃ ĐƠN */}
-
-                    <strong>
-                      {order.order_code}
-                    </strong>
-
-
-                    {/* KHÁCH */}
-
-                    <div>
-
-                      <strong>
-                        {order.customer_name}
-                      </strong>
-
-                      <div
-                        style={{
-                          color: '#777',
-                          fontSize: 14,
-                          marginTop: 4,
-                        }}
-                      >
-                        {order.customer_phone}
-                      </div>
-
-                    </div>
-
-
-                    {/* TOTAL */}
-
-                    <div>
-
-                      {Number(
-                        order.total || 0
-                      ).toLocaleString(
-                        'vi-VN'
-                      )}
-
-                      đ
-
-                    </div>
-
-
-                    {/* PAYMENT */}
-
-                    <div>
-
-                      {order.payment_status ===
-                      'PAID'
-                        ? 'Đã thanh toán'
-                        : 'Chưa thanh toán'}
-
-                    </div>
-
-
-                    {/* DETAIL BUTTON */}
-
-                    <button
-                      onClick={() => {
-                        setSelectedOrder(
-                          order
-                        )
-
-                        setPage(
-                          'order-detail'
-                        )
-                      }}
-
+                    <div
                       style={{
-                        padding:
-                          '9px 13px',
-
-                        background:
-                          '#2f855a',
-
-                        color: '#fff',
-
-                        border: 0,
-
-                        borderRadius: 8,
-
-                        cursor: 'pointer',
+                        color: '#777',
+                        fontSize: 14,
+                        marginTop: 4,
                       }}
                     >
-                      Xem chi tiết
-                    </button>
-
+                      {order.customer_phone}
+                    </div>
                   </div>
 
-                )
-              )}
+                  <div>
+                    {Number(order.total || 0).toLocaleString('vi-VN')}đ
+                  </div>
 
+                  <div>
+                    {order.payment_status === 'PAID'
+                      ? 'Đã thanh toán'
+                      : 'Chưa thanh toán'}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSelectedOrder(order)
+                      setPage('order-detail')
+                    }}
+                    style={{
+                      padding: '9px 13px',
+                      background: '#2f855a',
+                      color: '#fff',
+                      border: 0,
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Xem chi tiết
+                  </button>
+                </div>
+              ))}
             </div>
-
           )}
-
         </div>
-
       </div>
     </div>
   )
 }
-
-
-// ======================================================
-// LOGIN PAGE
-// ======================================================
 
 function LoginPage({
   email,
@@ -596,21 +384,17 @@ function LoginPage({
         fontFamily: 'Arial',
       }}
     >
-
       <form
         onSubmit={handleLogin}
-
         style={{
           width: 420,
           maxWidth: '100%',
           background: '#fff',
           padding: 32,
           borderRadius: 16,
-          boxShadow:
-            '0 10px 30px rgba(0,0,0,0.08)',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
         }}
       >
-
         <h1
           style={{
             textAlign: 'center',
@@ -619,65 +403,39 @@ function LoginPage({
           FreshFood Admin
         </h1>
 
-
         <input
           type="email"
           placeholder="Email"
           value={email}
-
-          onChange={(e) =>
-            setEmail(
-              e.target.value
-            )
-          }
-
+          onChange={(e) => setEmail(e.target.value)}
           required
-
           style={inputStyle}
         />
-
 
         <input
           type="password"
           placeholder="Mật khẩu"
           value={password}
-
-          onChange={(e) =>
-            setPassword(
-              e.target.value
-            )
-          }
-
+          onChange={(e) => setPassword(e.target.value)}
           required
-
           style={inputStyle}
         />
 
-
         <button
           type="submit"
-
           style={{
             width: '100%',
             padding: 14,
-
-            background:
-              '#2f855a',
-
+            background: '#2f855a',
             color: '#fff',
-
             border: 0,
-
             borderRadius: 8,
-
             cursor: 'pointer',
-
             fontSize: 16,
           }}
         >
           Đăng nhập
         </button>
-
 
         {message && (
           <p
@@ -688,1682 +446,674 @@ function LoginPage({
             {message}
           </p>
         )}
-
       </form>
-
     </div>
   )
 }
 
+function NewOrder({ onBack, onCreated }) {
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerAddress, setCustomerAddress] = useState('')
 
-// ======================================================
-// TẠO ĐƠN MỚI
-// ======================================================
+  const [shippingFee, setShippingFee] = useState(0)
+  const [note, setNote] = useState('')
+  const [message, setMessage] = useState('')
 
-function NewOrder({
-  onBack,
-  onCreated,
-}) {
-
-  const [customerName, setCustomerName] =
-    useState('')
-
-  const [customerPhone, setCustomerPhone] =
-    useState('')
-
-  const [
-    customerAddress,
-    setCustomerAddress,
-  ] = useState('')
-
-
-  const [shippingFee, setShippingFee] =
-    useState(0)
-
-  const [note, setNote] =
-    useState('')
-
-  const [message, setMessage] =
-    useState('')
-
-
-  const [products, setProducts] =
-    useState([])
-
-  const [
-    selectedProductId,
-    setSelectedProductId,
-  ] = useState('')
-
-  const [quantity, setQuantity] =
-    useState(1)
-
-  const [items, setItems] =
-    useState([])
-
-
-  // ====================================================
-  // LOAD PRODUCTS
-  // ====================================================
+  const [products, setProducts] = useState([])
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [items, setItems] = useState([])
 
   useEffect(() => {
     loadProducts()
   }, [])
 
-
   async function loadProducts() {
-
-    const { data, error } =
-      await supabase
-        .from('products')
-        .select('*')
-        .eq('active', true)
-        .order('name')
-
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('active', true)
+      .order('name')
 
     if (error) {
-      console.error(
-        'Lỗi tải sản phẩm:',
-        error
-      )
-
+      console.error('Lỗi tải sản phẩm:', error)
       return
     }
 
-
-    setProducts(
-      data || []
-    )
+    setProducts(data || [])
   }
 
-
-  // ====================================================
-  // ADD PRODUCT
-  // ====================================================
-
   function addItem() {
-
-    const product =
-      products.find(
-        (p) =>
-          String(p.id) ===
-          String(
-            selectedProductId
-          )
-      )
-
+    const product = products.find(
+      (p) => String(p.id) === String(selectedProductId)
+    )
 
     if (!product) {
-
-      alert(
-        'Hãy chọn sản phẩm'
-      )
-
+      alert('Hãy chọn sản phẩm')
       return
     }
 
+    const qty = Number(quantity)
 
-    const qty =
-      Number(quantity)
-
-
-    if (
-      !qty ||
-      qty <= 0
-    ) {
-
-      alert(
-        'Số lượng phải lớn hơn 0'
-      )
-
+    if (!qty || qty <= 0) {
+      alert('Số lượng phải lớn hơn 0')
       return
     }
 
-
-    const itemTotal =
-      qty *
-      Number(
-        product.price || 0
-      )
-
+    const itemTotal = qty * Number(product.price || 0)
 
     setItems([
       ...items,
-
       {
-        product_id:
-          product.id,
-
-        product_name:
-          product.name,
-
-        unit:
-          product.unit,
-
-        quantity:
-          qty,
-
-        unit_price:
-          Number(
-            product.price || 0
-          ),
-
-        total:
-          itemTotal,
+        product_id: product.id,
+        product_name: product.name,
+        unit: product.unit,
+        quantity: qty,
+        unit_price: Number(product.price || 0),
+        total: itemTotal,
       },
     ])
 
-
     setSelectedProductId('')
-
     setQuantity(1)
   }
 
-
-  // ====================================================
-  // REMOVE PRODUCT
-  // ====================================================
-
   function removeItem(index) {
-
-    setItems(
-      items.filter(
-        (_, i) =>
-          i !== index
-      )
-    )
+    setItems(items.filter((_, i) => i !== index))
   }
 
+  const subtotal = items.reduce(
+    (sum, item) => sum + Number(item.total || 0),
+    0
+  )
 
-  // ====================================================
-  // TOTAL
-  // ====================================================
-
-  const subtotal =
-    items.reduce(
-      (sum, item) =>
-        sum +
-        Number(
-          item.total || 0
-        ),
-
-      0
-    )
-
-
-  const total =
-    subtotal +
-    Number(
-      shippingFee || 0
-    )
-
-
-  // ====================================================
-  // SAVE ORDER
-  // ====================================================
+  const total = subtotal + Number(shippingFee || 0)
 
   async function saveOrder(e) {
-
     e.preventDefault()
 
-
-    if (
-      items.length === 0
-    ) {
-
-      setMessage(
-        'Đơn hàng chưa có sản phẩm'
-      )
-
+    if (items.length === 0) {
+      setMessage('Đơn hàng chưa có sản phẩm')
       return
     }
 
+    setMessage('Đang lưu đơn...')
 
-    setMessage(
-      'Đang lưu đơn...'
-    )
-
-
-    const orderCode =
-      'DH' +
-      Date.now()
-
-
-    // TẠO ORDER
-
-    const {
-      data: orderData,
-      error: orderError,
-    } =
-      await supabase
-        .from('orders')
-        .insert([
-          {
-            order_code:
-              orderCode,
-
-            customer_name:
-              customerName,
-
-            customer_phone:
-              customerPhone,
-
-            customer_address:
-              customerAddress,
-
-            source:
-              'Zalo',
-
-            shipping_fee:
-              Number(
-                shippingFee ||
-                  0
-              ),
-
-            subtotal,
-
-            total,
-
-            payment_status:
-              'UNPAID',
-
-            order_status:
-              'NEW',
-
-            note,
-          },
-        ])
-        .select()
-        .single()
-
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert([
+        {
+          customer_name: customerName,
+          customer_phone: customerPhone,
+          customer_address: customerAddress,
+          source: 'Zalo',
+          shipping_fee: Number(shippingFee || 0),
+          subtotal,
+          total,
+          payment_status: 'UNPAID',
+          order_status: 'NEW',
+          note,
+        },
+      ])
+      .select()
+      .single()
 
     if (orderError) {
+      console.error(orderError)
 
-      console.error(
-        orderError
-      )
-
-      setMessage(
-        'Lỗi tạo đơn: ' +
-          orderError.message
-      )
-
+      setMessage('Lỗi tạo đơn: ' + orderError.message)
       return
     }
 
+    const orderItems = items.map((item) => ({
+      order_id: orderData.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      unit: item.unit,
+      unit_price: item.unit_price,
+      total: item.total,
+    }))
 
-    // TẠO ORDER ITEMS
-
-    const orderItems =
-      items.map(
-        (item) => ({
-          order_id:
-            orderData.id,
-
-          product_id:
-            item.product_id,
-
-          product_name:
-            item.product_name,
-
-          quantity:
-            item.quantity,
-
-          unit:
-            item.unit,
-
-          unit_price:
-            item.unit_price,
-
-          total:
-            item.total,
-        })
-      )
-
-
-    const {
-      error: itemsError,
-    } =
-      await supabase
-        .from(
-          'order_items'
-        )
-        .insert(
-          orderItems
-        )
-
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems)
 
     if (itemsError) {
-
-      console.error(
-        itemsError
-      )
+      console.error(itemsError)
 
       setMessage(
-        'Đã tạo đơn nhưng lỗi lưu sản phẩm: ' +
-          itemsError.message
+        'Đã tạo đơn nhưng lỗi lưu sản phẩm: ' + itemsError.message
       )
-
       return
     }
 
+    setMessage('Tạo đơn thành công')
 
-    setMessage(
-      'Tạo đơn thành công'
-    )
-
-
-    setTimeout(
-      () => {
-        onCreated()
-      },
-
-      700
-    )
+    setTimeout(() => {
+      onCreated()
+    }, 700)
   }
-
-
-  // ====================================================
-  // UI
-  // ====================================================
 
   return (
     <div
       style={{
-        minHeight:
-          '100vh',
-
-        background:
-          '#f5f7f4',
-
-        padding:
-          30,
-
-        boxSizing:
-          'border-box',
-
-        fontFamily:
-          'Arial',
+        minHeight: '100vh',
+        background: '#f5f7f4',
+        padding: 30,
+        boxSizing: 'border-box',
+        fontFamily: 'Arial',
       }}
     >
-
       <div
         style={{
-          maxWidth:
-            900,
-
-          margin:
-            '0 auto',
-
-          background:
-            '#fff',
-
-          padding:
-            30,
-
-          borderRadius:
-            14,
+          maxWidth: 900,
+          margin: '0 auto',
+          background: '#fff',
+          padding: 30,
+          borderRadius: 14,
         }}
       >
-
         <button
-          onClick={
-            onBack
-          }
-
+          onClick={onBack}
           style={{
-            marginBottom:
-              20,
-
-            background:
-              'transparent',
-
+            marginBottom: 20,
+            background: 'transparent',
             border: 0,
-
-            cursor:
-              'pointer',
+            cursor: 'pointer',
           }}
         >
           ← Quay lại
         </button>
 
+        <h1>Tạo đơn mới</h1>
 
-        <h1>
-          Tạo đơn mới
-        </h1>
-
-
-        <form
-          onSubmit={
-            saveOrder
-          }
-        >
-
-          <label>
-            Tên khách hàng
-          </label>
-
+        <form onSubmit={saveOrder}>
+          <label>Tên khách hàng</label>
 
           <input
-            value={
-              customerName
-            }
-
-            onChange={(
-              e
-            ) =>
-              setCustomerName(
-                e.target.value
-              )
-            }
-
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
             required
-
-            style={
-              inputStyle
-            }
+            style={inputStyle}
           />
 
-
-          <label>
-            Số điện thoại
-          </label>
-
+          <label>Số điện thoại</label>
 
           <input
-            value={
-              customerPhone
-            }
-
-            onChange={(
-              e
-            ) =>
-              setCustomerPhone(
-                e.target.value
-              )
-            }
-
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
             required
-
-            style={
-              inputStyle
-            }
+            style={inputStyle}
           />
 
-
-          <label>
-            Địa chỉ
-          </label>
-
+          <label>Địa chỉ</label>
 
           <input
-            value={
-              customerAddress
-            }
-
-            onChange={(
-              e
-            ) =>
-              setCustomerAddress(
-                e.target.value
-              )
-            }
-
+            value={customerAddress}
+            onChange={(e) => setCustomerAddress(e.target.value)}
             required
-
-            style={
-              inputStyle
-            }
+            style={inputStyle}
           />
 
-
-          <h2>
-            Sản phẩm
-          </h2>
-
+          <h2>Sản phẩm</h2>
 
           <div
             style={{
-              display:
-                'grid',
-
-              gridTemplateColumns:
-                '2fr 1fr auto',
-
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr auto',
               gap: 12,
-
-              marginBottom:
-                20,
+              marginBottom: 20,
             }}
           >
-
             <select
-              value={
-                selectedProductId
-              }
-
-              onChange={(
-                e
-              ) =>
-                setSelectedProductId(
-                  e.target.value
-                )
-              }
-
+              value={selectedProductId}
+              onChange={(e) => setSelectedProductId(e.target.value)}
               style={{
-                padding:
-                  12,
+                padding: 12,
               }}
             >
+              <option value="">Chọn sản phẩm</option>
 
-              <option
-                value=""
-              >
-                Chọn sản phẩm
-              </option>
-
-
-              {products.map(
-                (
-                  product
-                ) => (
-
-                  <option
-                    key={
-                      product.id
-                    }
-
-                    value={
-                      product.id
-                    }
-                  >
-
-                    {
-                      product.name
-                    }
-
-                    {' - '}
-
-                    {Number(
-                      product.price ||
-                        0
-                    ).toLocaleString(
-                      'vi-VN'
-                    )}
-
-                    đ/
-
-                    {
-                      product.unit
-                    }
-
-                  </option>
-
-                )
-              )}
-
+              {products.map((product) => (
+                <option
+                  key={product.id}
+                  value={product.id}
+                >
+                  {product.name}
+                  {' - '}
+                  {Number(product.price || 0).toLocaleString('vi-VN')}
+                  đ/{product.unit}
+                </option>
+              ))}
             </select>
-
 
             <input
               type="number"
-
               step="0.001"
-
               min="0"
-
-              value={
-                quantity
-              }
-
-              onChange={(
-                e
-              ) =>
-                setQuantity(
-                  e.target.value
-                )
-              }
-
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
               style={{
-                padding:
-                  12,
+                padding: 12,
               }}
             />
 
-
             <button
               type="button"
-
-              onClick={
-                addItem
-              }
-
+              onClick={addItem}
               style={{
-                padding:
-                  '12px 20px',
-
-                cursor:
-                  'pointer',
+                padding: '12px 20px',
+                cursor: 'pointer',
               }}
             >
               + Thêm
             </button>
-
           </div>
 
+          {items.map((item, index) => (
+            <div
+              key={index}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 1fr 1fr auto',
+                gap: 12,
+                padding: '12px 0',
+                borderBottom: '1px solid #ddd',
+                alignItems: 'center',
+              }}
+            >
+              <strong>{item.product_name}</strong>
 
-          {/* ITEMS */}
-
-          {items.map(
-            (
-              item,
-              index
-            ) => (
-
-              <div
-                key={
-                  index
-                }
-
-                style={{
-                  display:
-                    'grid',
-
-                  gridTemplateColumns:
-                    '2fr 1fr 1fr auto',
-
-                  gap:
-                    12,
-
-                  padding:
-                    '12px 0',
-
-                  borderBottom:
-                    '1px solid #ddd',
-
-                  alignItems:
-                    'center',
-                }}
-              >
-
-                <strong>
-                  {
-                    item.product_name
-                  }
-                </strong>
-
-
-                <div>
-                  {
-                    item.quantity
-                  }{' '}
-                  {
-                    item.unit
-                  }
-                </div>
-
-
-                <div>
-                  {Number(
-                    item.total
-                  ).toLocaleString(
-                    'vi-VN'
-                  )}
-                  đ
-                </div>
-
-
-                <button
-                  type="button"
-
-                  onClick={() =>
-                    removeItem(
-                      index
-                    )
-                  }
-                >
-                  Xóa
-                </button>
-
+              <div>
+                {item.quantity} {item.unit}
               </div>
 
-            )
-          )}
+              <div>
+                {Number(item.total).toLocaleString('vi-VN')}đ
+              </div>
 
-
-          {/* SHIP */}
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+              >
+                Xóa
+              </button>
+            </div>
+          ))}
 
           <div
             style={{
-              marginTop:
-                25,
+              marginTop: 25,
             }}
           >
-
-            <label>
-              Phí ship
-            </label>
-
+            <label>Phí ship</label>
 
             <input
               type="number"
-
-              value={
-                shippingFee
-              }
-
-              onChange={(
-                e
-              ) =>
-                setShippingFee(
-                  e.target.value
-                )
-              }
-
-              style={
-                inputStyle
-              }
+              value={shippingFee}
+              onChange={(e) => setShippingFee(e.target.value)}
+              style={inputStyle}
             />
-
           </div>
-
-
-          {/* TOTAL */}
 
           <div
             style={{
-              background:
-                '#f5f5f5',
-
-              padding:
-                20,
-
-              borderRadius:
-                10,
-
-              marginBottom:
-                20,
+              background: '#f5f5f5',
+              padding: 20,
+              borderRadius: 10,
+              marginBottom: 20,
             }}
           >
-
             <p>
-
               Tạm tính:{' '}
-
               <strong>
-
-                {subtotal.toLocaleString(
-                  'vi-VN'
-                )}
-
-                đ
-
+                {subtotal.toLocaleString('vi-VN')}đ
               </strong>
-
             </p>
-
 
             <p>
-
               Phí ship:{' '}
-
               <strong>
-
-                {Number(
-                  shippingFee ||
-                    0
-                ).toLocaleString(
-                  'vi-VN'
-                )}
-
-                đ
-
+                {Number(shippingFee || 0).toLocaleString('vi-VN')}đ
               </strong>
-
             </p>
-
 
             <h2>
-
-              Tổng:{' '}
-
-              {total.toLocaleString(
-                'vi-VN'
-              )}
-
-              đ
-
+              Tổng: {total.toLocaleString('vi-VN')}đ
             </h2>
-
           </div>
 
-
-          {/* NOTE */}
-
-          <label>
-            Ghi chú
-          </label>
-
+          <label>Ghi chú</label>
 
           <textarea
-            value={
-              note
-            }
-
-            onChange={(
-              e
-            ) =>
-              setNote(
-                e.target.value
-              )
-            }
-
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             style={{
-              width:
-                '100%',
-
-              padding:
-                12,
-
-              minHeight:
-                80,
-
-              boxSizing:
-                'border-box',
-
-              marginBottom:
-                20,
+              width: '100%',
+              padding: 12,
+              minHeight: 80,
+              boxSizing: 'border-box',
+              marginBottom: 20,
             }}
           />
 
-
-          {/* SAVE */}
-
           <button
             type="submit"
-
             style={{
-              width:
-                '100%',
-
-              padding:
-                15,
-
-              background:
-                '#2f855a',
-
-              color:
-                '#fff',
-
-              border:
-                0,
-
-              borderRadius:
-                8,
-
-              cursor:
-                'pointer',
-
-              fontSize:
-                16,
+              width: '100%',
+              padding: 15,
+              background: '#2f855a',
+              color: '#fff',
+              border: 0,
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 16,
             }}
           >
             Lưu đơn
           </button>
 
-
-          {message && (
-            <p>
-              {message}
-            </p>
-          )}
-
+          {message && <p>{message}</p>}
         </form>
-
       </div>
-
     </div>
   )
 }
-
-
-// ======================================================
-// CHI TIẾT ĐƠN
-// ======================================================
 
 function OrderDetail({
   order,
   onBack,
   onUpdated,
 }) {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const [items, setItems] =
-    useState([])
+  const [orderStatus, setOrderStatus] = useState(
+    order.order_status || 'NEW'
+  )
 
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true)
-
-
-  const [
-    orderStatus,
-    setOrderStatus,
-  ] =
-    useState(
-      order.order_status ||
-        'NEW'
-    )
-
-
-  const [
-    paymentStatus,
-    setPaymentStatus,
-  ] =
-    useState(
-      order.payment_status ||
-        'UNPAID'
-    )
-
+  const [paymentStatus, setPaymentStatus] = useState(
+    order.payment_status || 'UNPAID'
+  )
 
   useEffect(() => {
     loadItems()
   }, [])
 
-
-  // ====================================================
-  // LOAD ITEMS
-  // ====================================================
-
   async function loadItems() {
-
-    const {
-      data,
-      error,
-    } =
-      await supabase
-        .from(
-          'order_items'
-        )
-        .select('*')
-        .eq(
-          'order_id',
-          order.id
-        )
-        .order(
-          'id',
-          {
-            ascending:
-              true,
-          }
-        )
-
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', order.id)
+      .order('id', {
+        ascending: true,
+      })
 
     if (error) {
-
-      console.error(
-        'Lỗi tải sản phẩm:',
-        error
-      )
-
-      setLoading(
-        false
-      )
-
+      console.error('Lỗi tải sản phẩm:', error)
+      setLoading(false)
       return
     }
 
-
-    setItems(
-      data || []
-    )
-
-    setLoading(
-      false
-    )
+    setItems(data || [])
+    setLoading(false)
   }
-
-
-  // ====================================================
-  // UPDATE STATUS
-  // ====================================================
 
   async function updateStatus() {
-
-    const {
-      data,
-      error,
-    } =
-      await supabase
-        .from(
-          'orders'
-        )
-        .update({
-          order_status:
-            orderStatus,
-
-          payment_status:
-            paymentStatus,
-        })
-        .eq(
-          'id',
-          order.id
-        )
-        .select()
-        .single()
-
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        order_status: orderStatus,
+        payment_status: paymentStatus,
+      })
+      .eq('id', order.id)
+      .select()
+      .single()
 
     if (error) {
-
-      alert(
-        'Lỗi cập nhật: ' +
-          error.message
-      )
-
+      alert('Lỗi cập nhật: ' + error.message)
       return
     }
 
+    alert('Đã cập nhật trạng thái')
 
-    alert(
-      'Đã cập nhật trạng thái'
-    )
-
-
-    onUpdated(
-      data
-    )
+    onUpdated(data)
   }
-
-
-  // ====================================================
-  // UI DETAIL
-  // ====================================================
 
   return (
     <div
       style={{
-        minHeight:
-          '100vh',
-
-        background:
-          '#f5f7f4',
-
-        padding:
-          30,
-
-        boxSizing:
-          'border-box',
-
-        fontFamily:
-          'Arial',
+        minHeight: '100vh',
+        background: '#f5f7f4',
+        padding: 30,
+        boxSizing: 'border-box',
+        fontFamily: 'Arial',
       }}
     >
-
       <div
         style={{
-          maxWidth:
-            900,
-
-          margin:
-            '0 auto',
-
-          background:
-            '#fff',
-
-          padding:
-            30,
-
-          borderRadius:
-            14,
+          maxWidth: 900,
+          margin: '0 auto',
+          background: '#fff',
+          padding: 30,
+          borderRadius: 14,
         }}
       >
-
-        {/* BACK */}
-
         <button
-          onClick={
-            onBack
-          }
-
+          onClick={onBack}
           style={{
-            marginBottom:
-              20,
-
-            cursor:
-              'pointer',
+            marginBottom: 20,
+            cursor: 'pointer',
           }}
         >
           ← Quay lại
         </button>
 
-
-        <h1>
-          Chi tiết đơn hàng
-        </h1>
-
-
-        {/* CUSTOMER */}
+        <h1>Chi tiết đơn hàng</h1>
 
         <p>
-          <strong>
-            Mã đơn:
-          </strong>{' '}
-
-          {
-            order.order_code
-          }
+          <strong>Mã đơn:</strong>{' '}
+          {order.order_code}
         </p>
-
 
         <p>
-          <strong>
-            Khách hàng:
-          </strong>{' '}
-
-          {
-            order.customer_name
-          }
+          <strong>Khách hàng:</strong>{' '}
+          {order.customer_name}
         </p>
-
 
         <p>
-          <strong>
-            SĐT:
-          </strong>{' '}
-
-          {
-            order.customer_phone
-          }
+          <strong>SĐT:</strong>{' '}
+          {order.customer_phone}
         </p>
-
 
         <p>
-          <strong>
-            Địa chỉ:
-          </strong>{' '}
-
-          {
-            order.customer_address
-          }
+          <strong>Địa chỉ:</strong>{' '}
+          {order.customer_address}
         </p>
-
 
         <hr />
 
-
-        {/* PRODUCTS */}
-
-        <h2>
-          Sản phẩm
-        </h2>
-
+        <h2>Sản phẩm</h2>
 
         {loading ? (
-
-          <p>
-            Đang tải...
-          </p>
-
-        ) : items.length ===
-          0 ? (
-
-          <p>
-            Đơn hàng chưa có sản phẩm.
-          </p>
-
+          <p>Đang tải...</p>
+        ) : items.length === 0 ? (
+          <p>Đơn hàng chưa có sản phẩm.</p>
         ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                gap: 12,
+                padding: '12px 0',
+                borderBottom: '1px solid #eee',
+                alignItems: 'center',
+              }}
+            >
+              <strong>{item.product_name}</strong>
 
-          items.map(
-            (
-              item
-            ) => (
-
-              <div
-                key={
-                  item.id
-                }
-
-                style={{
-                  display:
-                    'grid',
-
-                  gridTemplateColumns:
-                    '2fr 1fr 1fr 1fr',
-
-                  gap:
-                    12,
-
-                  padding:
-                    '12px 0',
-
-                  borderBottom:
-                    '1px solid #eee',
-
-                  alignItems:
-                    'center',
-                }}
-              >
-
-                <strong>
-                  {
-                    item.product_name
-                  }
-                </strong>
-
-
-                <div>
-
-                  {
-                    item.quantity
-                  }{' '}
-
-                  {
-                    item.unit
-                  }
-
-                </div>
-
-
-                <div>
-
-                  {Number(
-                    item.unit_price ||
-                      0
-                  ).toLocaleString(
-                    'vi-VN'
-                  )}
-
-                  đ
-
-                </div>
-
-
-                <div>
-
-                  {Number(
-                    item.total ||
-                      0
-                  ).toLocaleString(
-                    'vi-VN'
-                  )}
-
-                  đ
-
-                </div>
-
+              <div>
+                {item.quantity} {item.unit}
               </div>
 
-            )
-          )
+              <div>
+                {Number(item.unit_price || 0).toLocaleString('vi-VN')}đ
+              </div>
 
+              <div>
+                {Number(item.total || 0).toLocaleString('vi-VN')}đ
+              </div>
+            </div>
+          ))
         )}
 
-
-        {/* TOTAL */}
-
         <div
           style={{
-            marginTop:
-              25,
-
-            background:
-              '#f7f7f7',
-
-            padding:
-              20,
-
-            borderRadius:
-              10,
+            marginTop: 25,
+            background: '#f7f7f7',
+            padding: 20,
+            borderRadius: 10,
           }}
         >
-
           <p>
-
             Tạm tính:{' '}
-
             <strong>
-
-              {Number(
-                order.subtotal ||
-                  0
-              ).toLocaleString(
-                'vi-VN'
-              )}
-
-              đ
-
+              {Number(order.subtotal || 0).toLocaleString('vi-VN')}đ
             </strong>
-
           </p>
-
 
           <p>
-
             Phí ship:{' '}
-
             <strong>
-
-              {Number(
-                order.shipping_fee ||
-                  0
-              ).toLocaleString(
-                'vi-VN'
-              )}
-
-              đ
-
+              {Number(order.shipping_fee || 0).toLocaleString('vi-VN')}đ
             </strong>
-
           </p>
-
 
           <h2>
-
             Tổng:{' '}
-
-            {Number(
-              order.total || 0
-            ).toLocaleString(
-              'vi-VN'
-            )}
-
-            đ
-
+            {Number(order.total || 0).toLocaleString('vi-VN')}đ
           </h2>
-
         </div>
-
-
-        {/* STATUS */}
 
         <div
           style={{
-            marginTop:
-              25,
+            marginTop: 25,
           }}
         >
-
-          <label>
-            Trạng thái đơn
-          </label>
-
+          <label>Trạng thái đơn</label>
 
           <select
-            value={
-              orderStatus
-            }
-
-            onChange={(
-              e
-            ) =>
-              setOrderStatus(
-                e.target.value
-              )
-            }
-
-            style={
-              inputStyle
-            }
+            value={orderStatus}
+            onChange={(e) => setOrderStatus(e.target.value)}
+            style={inputStyle}
           >
-
-            <option
-              value="NEW"
-            >
-              Mới
-            </option>
-
-            <option
-              value="PREPARING"
-            >
-              Chuẩn bị
-            </option>
-
-            <option
-              value="DELIVERING"
-            >
-              Đang giao
-            </option>
-
-            <option
-              value="COMPLETED"
-            >
-              Hoàn thành
-            </option>
-
-            <option
-              value="CANCELLED"
-            >
-              Đã hủy
-            </option>
-
+            <option value="NEW">Mới</option>
+            <option value="PREPARING">Chuẩn bị</option>
+            <option value="DELIVERING">Đang giao</option>
+            <option value="COMPLETED">Hoàn thành</option>
+            <option value="CANCELLED">Đã hủy</option>
           </select>
 
-
-          <label>
-            Thanh toán
-          </label>
-
+          <label>Thanh toán</label>
 
           <select
-            value={
-              paymentStatus
-            }
-
-            onChange={(
-              e
-            ) =>
-              setPaymentStatus(
-                e.target.value
-              )
-            }
-
-            style={
-              inputStyle
-            }
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+            style={inputStyle}
           >
-
-            <option
-              value="UNPAID"
-            >
-              Chưa thanh toán
-            </option>
-
-            <option
-              value="PAID"
-            >
-              Đã thanh toán
-            </option>
-
+            <option value="UNPAID">Chưa thanh toán</option>
+            <option value="PAID">Đã thanh toán</option>
           </select>
-
-
-          {/* UPDATE BUTTON */}
 
           <button
-            onClick={
-              updateStatus
-            }
-
+            onClick={updateStatus}
             style={{
-              width:
-                '100%',
-
-              padding:
-                14,
-
-              background:
-                '#2f855a',
-
-              color:
-                '#fff',
-
-              border:
-                0,
-
-              borderRadius:
-                8,
-
-              cursor:
-                'pointer',
-
-              fontSize:
-                16,
+              width: '100%',
+              padding: 14,
+              background: '#2f855a',
+              color: '#fff',
+              border: 0,
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 16,
             }}
           >
             Cập nhật trạng thái
           </button>
 
-
-          {/* PRINT BUTTON */}
-
           <button
-            onClick={() =>
-              window.print()
-            }
-
+            onClick={() => window.print()}
             style={{
-              width:
-                '100%',
-
-              padding:
-                14,
-
-              background:
-                '#222',
-
-              color:
-                '#fff',
-
-              border:
-                0,
-
-              borderRadius:
-                8,
-
-              cursor:
-                'pointer',
-
-              marginTop:
-                12,
-
-              fontSize:
-                16,
+              width: '100%',
+              padding: 14,
+              background: '#222',
+              color: '#fff',
+              border: 0,
+              borderRadius: 8,
+              cursor: 'pointer',
+              marginTop: 12,
+              fontSize: 16,
             }}
           >
             🖨 In bill
           </button>
-
         </div>
 
-
-        {/* BILL ẨN - CHỈ HIỆN KHI PRINT */}
-
         <PrintBill
-          order={
-            order
-          }
-
-          items={
-            items
-          }
+          order={order}
+          items={items}
         />
-
       </div>
-
     </div>
   )
 }
-
-
-// ======================================================
-// DASHBOARD CARD
-// ======================================================
 
 function DashboardCard({
   title,
   value,
 }) {
-
   return (
     <div
       style={{
-        background:
-          '#fff',
-
-        padding:
-          24,
-
-        borderRadius:
-          14,
-
-        boxShadow:
-          '0 5px 20px rgba(0,0,0,0.05)',
-
-        textAlign:
-          'center',
+        background: '#fff',
+        padding: 24,
+        borderRadius: 14,
+        boxShadow: '0 5px 20px rgba(0,0,0,0.05)',
+        textAlign: 'center',
       }}
     >
-
       <p
         style={{
-          color:
-            '#777',
-
-          margin:
-            0,
+          color: '#777',
+          margin: 0,
         }}
       >
         {title}
       </p>
 
-
       <h2
         style={{
-          marginBottom:
-            0,
+          marginBottom: 0,
         }}
       >
         {value}
       </h2>
-
     </div>
   )
 }
 
-
-// ======================================================
-// INPUT STYLE DÙNG CHUNG
-// ======================================================
-
 const inputStyle = {
-
-  width:
-    '100%',
-
-  padding:
-    12,
-
-  marginTop:
-    6,
-
-  marginBottom:
-    16,
-
-  boxSizing:
-    'border-box',
-
-  border:
-    '1px solid #ccc',
-
-  borderRadius:
-    6,
-
+  width: '100%',
+  padding: 12,
+  marginTop: 6,
+  marginBottom: 16,
+  boxSizing: 'border-box',
+  border: '1px solid #ccc',
+  borderRadius: 6,
 }
-
-
-// ======================================================
-// EXPORT
-// ======================================================
 
 export default App

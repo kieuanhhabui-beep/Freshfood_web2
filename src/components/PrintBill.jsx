@@ -1,185 +1,140 @@
-function PrintBill({ order, items = [] }) {
-  // =====================================================
-  // CHỈ CẦN SỬA THÔNG TIN CỬA HÀNG Ở ĐÂY
-  // =====================================================
+function PrintBill({ order, items }) {
   const store = {
-    name: 'THỰC PHẨM SẠCH THANH HUYỀN ',
-    bank: 'AGRIBANK',
-    accountNumber: '1482205527361',
-    accountName: 'BUI HA KIEU ANH ',
+    name: 'THỰC PHẨM SẠCH THANH HUYỀN',
+    phone: '0985337779',
+
   }
 
-  // Format tiền Việt Nam
   const formatMoney = (value) => {
     return Number(value || 0).toLocaleString('vi-VN') + 'đ'
-  }
-
-  // Format ngày giờ
-  const formatDate = (value) => {
-    if (!value) return ''
-
-    return new Date(value).toLocaleString('vi-VN')
   }
 
   function BillCopy({ copyName }) {
     return (
       <div className="bill-copy">
+        {/* HEADER LEFT */}
+        <div className="bill-store-top">
+          <div className="store-name">{store.name}</div>
+          <div className="store-phone">Điện thoại: {store.phone}</div>
+        </div>
 
-        {/* TÊN CỬA HÀNG */}
+        <div className="bill-dots"></div>
+
+        {/* TITLE CENTER */}
         <div className="bill-center">
-          <h2>{store.name}</h2>
-          <strong>{copyName}</strong>
+          <div className="bill-main-title">HÓA ĐƠN BÁN HÀNG</div>
+          <div className="bill-copy-name">{copyName}</div>
         </div>
 
-        <div className="bill-line" />
-
-        {/* THÔNG TIN ĐƠN */}
-        <div className="bill-info">
+        {/* ORDER INFO */}
+        <div className="bill-info-left">
           <p>
-            <strong>Mã đơn:</strong> {order?.order_code}
+            <strong>Mã đơn hàng:</strong> {order.order_code || ''}
           </p>
-
           <p>
-            <strong>Ngày:</strong> {formatDate(order?.created_at)}
-          </p>
-        </div>
-
-        <div className="bill-line" />
-
-        {/* THÔNG TIN KHÁCH */}
-        <div className="bill-info">
-          <p>
-            <strong>Khách hàng:</strong> {order?.customer_name}
-          </p>
-
-          <p>
-            <strong>SĐT:</strong> {order?.customer_phone}
-          </p>
-
-          <p>
-            <strong>Địa chỉ:</strong> {order?.customer_address}
+            <strong>Ngày:</strong>{' '}
+            {order.created_at
+              ? new Date(order.created_at).toLocaleString('vi-VN')
+              : ''}
           </p>
         </div>
 
-        <div className="bill-line" />
+        <div className="bill-dots"></div>
 
-        {/* TIÊU ĐỀ SẢN PHẨM */}
-        <div className="bill-row bill-header">
-          <span>Sản phẩm</span>
+        {/* CUSTOMER INFO */}
+        <div className="bill-info-left">
+          <p>
+            <strong>Tên khách hàng:</strong> {order.customer_name || ''}
+          </p>
+          <p>
+            <strong>SĐT:</strong> {order.customer_phone || ''}
+          </p>
+          <p>
+            <strong>Địa chỉ:</strong> {order.customer_address || ''}
+          </p>
+        </div>
+
+        <div className="bill-dots"></div>
+
+        {/* PRODUCT HEADER */}
+        <div className="bill-product-header">
+          <span>Đơn giá</span>
+          <span>SL</span>
           <span>Thành tiền</span>
         </div>
 
-        <div className="bill-line-small" />
+        {/* PRODUCT LIST */}
+        {items.map((item) => (
+          <div key={item.id} className="bill-item">
+            <div className="bill-product-name">{item.product_name}</div>
 
-        {/* DANH SÁCH SẢN PHẨM */}
-        {items.length === 0 ? (
-          <p>Không có sản phẩm.</p>
-        ) : (
-          items.map((item, index) => (
-            <div
-              key={item.id || index}
-              className="bill-item"
-            >
-              <strong>{item.product_name}</strong>
-
-              <div className="bill-row bill-item-detail">
-                <span>
-                  {item.quantity} {item.unit}
-                  {' × '}
-                  {formatMoney(item.unit_price)}
-                </span>
-
-                <span>
-                  {formatMoney(item.total)}
-                </span>
-              </div>
+            <div className="bill-product-row">
+              <span>{formatMoney(item.unit_price)}</span>
+              <span>{item.quantity || 0}</span>
+              <span>{formatMoney(item.total)}</span>
             </div>
-          ))
-        )}
+          </div>
+        ))}
 
-        <div className="bill-line" />
+        <div className="bill-dots"></div>
 
-        {/* TỔNG TIỀN */}
+        {/* TOTAL */}
         <div className="bill-row">
-          <span>Tạm tính:</span>
-
-          <span>
-            {formatMoney(order?.subtotal)}
-          </span>
+          <span>Tổng tiền hàng:</span>
+          <span>{formatMoney(order.subtotal)}</span>
         </div>
 
         <div className="bill-row">
           <span>Phí ship:</span>
-
-          <span>
-            {formatMoney(order?.shipping_fee)}
-          </span>
+          <span>{formatMoney(order.shipping_fee)}</span>
         </div>
-
-        <div className="bill-line-small" />
 
         <div className="bill-total">
-          <span>TỔNG:</span>
-
-          <span>
-            {formatMoney(order?.total)}
-          </span>
+          <span>Tổng cộng:</span>
+          <span>{formatMoney(order.total)}</span>
         </div>
 
-        <div className="bill-line" />
+        <div className="bill-dots"></div>
 
-        {/* TRẠNG THÁI THANH TOÁN */}
-        <div className="bill-center payment-status">
-
-          {order?.payment_status === 'PAID' ? (
-            <strong>ĐÃ THANH TOÁN</strong>
-          ) : (
-            <strong>CHƯA THANH TOÁN</strong>
-          )}
-
-        </div>
-
-        <div className="bill-line" />
-
-        {/* THÔNG TIN NGÂN HÀNG */}
+        {/* BANK INFO */}
         <div className="bill-center">
+          <strong>THÔNG TIN CHUYỂN KHOẢN</strong>
+        </div>
 
-          <strong>
-            THÔNG TIN CHUYỂN KHOẢN
-          </strong>
-
-          <p>{store.bank}</p>
-
+        <div className="bill-info-left">
           <p>
-            STK: <strong>{store.accountNumber}</strong>
+            <strong>Ngân hàng:</strong> {store.bank}
           </p>
-
           <p>
-            CTK: <strong>{store.accountName}</strong>
+            <strong>Mã ngân hàng / STK:</strong> {store.accountNumber}
           </p>
+          <p>
+            <strong>Người nhận:</strong> {store.accountName}
+          </p>
+        </div>
 
-          {/* QR */}
+        <div className="bill-center">
           <img
             src="/qr-bank.png"
             className="bill-qr"
             alt="QR chuyển khoản"
           />
-
-          <p>Nội dung chuyển khoản:</p>
-
-          <strong>
-            {order?.order_code}
-          </strong>
-
         </div>
 
-        <div className="bill-line" />
-
-        {/* FOOTER */}
-        <div className="bill-center bill-footer">
-          <p>Cảm ơn quý khách!</p>
+        <div className="bill-center bill-transfer-content">
+          <p>
+            <strong>Nội dung chuyển khoản:</strong>
+          </p>
+          <p>
+            {(order.customer_name || '').toUpperCase()} {order.order_code || ''}
+          </p>
         </div>
 
+        <div className="bill-dots"></div>
+
+        <div className="bill-center">
+          <p>Cảm ơn quý khách</p>
+        </div>
       </div>
     )
   }
@@ -188,264 +143,173 @@ function PrintBill({ order, items = [] }) {
     <>
       <style>
         {`
-
-        /* =========================================
-           BÌNH THƯỜNG KHÔNG HIỂN THỊ BILL
-        ========================================= */
-
-        .bill-print-area {
-          display: none;
-        }
-
-
-        /* =========================================
-           CHỈ HIỂN THỊ KHI BẤM PRINT
-        ========================================= */
-
-        @media print {
-
-          body * {
-            visibility: hidden !important;
-          }
-
-
-          .bill-print-area,
-          .bill-print-area * {
-            visibility: visible !important;
-          }
-
-
           .bill-print-area {
-            display: block !important;
-
-            position: absolute;
-
-            left: 0;
-
-            top: 0;
-
-            width: 80mm;
-
-            background: white;
+            display: none;
           }
 
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
 
-          /* KHỔ GIẤY */
+            .bill-print-area,
+            .bill-print-area * {
+              visibility: visible !important;
+            }
 
-          @page {
-            size: 80mm auto;
-            margin: 2mm;
+            .bill-print-area {
+              display: block !important;
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 80mm;
+            }
+
+            @page {
+              size: 80mm auto;
+              margin: 2mm;
+            }
+
+            .bill-copy {
+              width: 76mm;
+              padding: 2mm;
+              box-sizing: border-box;
+              font-family: Arial, sans-serif;
+              font-size: 12px;
+              color: #000;
+            }
+
+            .bill-copy + .bill-copy {
+              page-break-before: always;
+            }
+
+            .bill-store-top {
+              text-align: left;
+            }
+
+            .store-name {
+              font-size: 16px;
+              font-weight: 700;
+              text-transform: uppercase;
+              line-height: 1.2;
+            }
+
+            .store-phone {
+              margin-top: 4px;
+              font-size: 12px;
+            }
+
+            .bill-main-title {
+              font-size: 18px;
+              font-weight: 700;
+              margin-top: 6px;
+              margin-bottom: 4px;
+            }
+
+            .bill-copy-name {
+              font-size: 11px;
+              font-weight: 700;
+              margin-bottom: 4px;
+            }
+
+            .bill-center {
+              text-align: center;
+            }
+
+            .bill-info-left {
+              text-align: left;
+            }
+
+            .bill-info-left p {
+              margin: 3px 0;
+            }
+
+            .bill-dots {
+              border-top: 1px dashed #000;
+              margin: 8px 0;
+            }
+
+            .bill-product-header {
+              display: grid;
+              grid-template-columns: 1fr 50px 90px;
+              gap: 6px;
+              font-weight: 700;
+              margin-bottom: 6px;
+              text-align: left;
+            }
+
+            .bill-product-header span:nth-child(2) {
+              text-align: center;
+            }
+
+            .bill-product-header span:nth-child(3) {
+              text-align: right;
+            }
+
+            .bill-item {
+              margin-bottom: 8px;
+            }
+
+            .bill-product-name {
+              text-align: left;
+              font-weight: 700;
+              margin-bottom: 2px;
+            }
+
+            .bill-product-row {
+              display: grid;
+              grid-template-columns: 1fr 50px 90px;
+              gap: 6px;
+              align-items: center;
+            }
+
+            .bill-product-row span:nth-child(1) {
+              text-align: left;
+            }
+
+            .bill-product-row span:nth-child(2) {
+              text-align: center;
+            }
+
+            .bill-product-row span:nth-child(3) {
+              text-align: right;
+            }
+
+            .bill-row {
+              display: flex;
+              justify-content: space-between;
+              margin: 4px 0;
+            }
+
+            .bill-total {
+              display: flex;
+              justify-content: space-between;
+              font-size: 16px;
+              font-weight: 700;
+              margin-top: 6px;
+            }
+
+            .bill-qr {
+              width: 34mm;
+              height: 34mm;
+              object-fit: contain;
+              margin-top: 8px;
+            }
+
+            .bill-transfer-content p {
+              margin: 3px 0;
+            }
+
+            p {
+              margin: 4px 0;
+            }
           }
-
-
-          /* BILL */
-
-          .bill-copy {
-
-            width: 76mm;
-
-            padding: 2mm;
-
-            box-sizing: border-box;
-
-            font-family:
-              Arial,
-              Helvetica,
-              sans-serif;
-
-            font-size: 12px;
-
-            line-height: 1.35;
-
-            color: #000;
-
-            background: #fff;
-          }
-
-
-          /* BẢN THỨ 2 */
-
-          .bill-copy + .bill-copy {
-
-            page-break-before: always;
-          }
-
-
-          /* CENTER */
-
-          .bill-center {
-
-            text-align: center;
-          }
-
-
-          /* TÊN SHOP */
-
-          .bill-center h2 {
-
-            margin: 0 0 4px 0;
-
-            font-size: 20px;
-
-            font-weight: 700;
-          }
-
-
-          /* ĐƯỜNG NGĂN */
-
-          .bill-line {
-
-            border-top:
-              1px dashed #000;
-
-            margin:
-              8px 0;
-          }
-
-
-          .bill-line-small {
-
-            border-top:
-              1px dotted #555;
-
-            margin:
-              5px 0;
-          }
-
-
-          /* ROW */
-
-          .bill-row {
-
-            display: flex;
-
-            justify-content:
-              space-between;
-
-            align-items:
-              flex-start;
-
-            gap: 8px;
-
-            margin:
-              4px 0;
-          }
-
-
-          .bill-row span:last-child {
-
-            text-align: right;
-
-            white-space: nowrap;
-          }
-
-
-          /* HEADER SẢN PHẨM */
-
-          .bill-header {
-
-            font-weight: bold;
-          }
-
-
-          /* SẢN PHẨM */
-
-          .bill-item {
-
-            margin-bottom: 8px;
-          }
-
-
-          .bill-item-detail {
-
-            font-size: 11px;
-          }
-
-
-          /* TOTAL */
-
-          .bill-total {
-
-            display: flex;
-
-            justify-content:
-              space-between;
-
-            font-size: 16px;
-
-            font-weight: bold;
-
-            margin-top: 6px;
-          }
-
-
-          /* QR */
-
-          .bill-qr {
-
-            display: block;
-
-            width: 36mm;
-
-            height: 36mm;
-
-            object-fit: contain;
-
-            margin:
-              8px auto;
-          }
-
-
-          /* PAYMENT */
-
-          .payment-status {
-
-            font-size: 14px;
-          }
-
-
-          /* TEXT */
-
-          .bill-copy p {
-
-            margin:
-              4px 0;
-
-            word-break:
-              break-word;
-          }
-
-
-          /* FOOTER */
-
-          .bill-footer {
-
-            margin-top: 8px;
-
-            font-style: italic;
-          }
-
-        }
-
         `}
       </style>
 
-
       <div className="bill-print-area">
-
-        {/* BILL KHÁCH */}
-
-        <BillCopy
-          copyName="BẢN KHÁCH HÀNG"
-        />
-
-
-        {/* BILL CỬA HÀNG */}
-
-        <BillCopy
-          copyName="BẢN CỬA HÀNG"
-        />
-
+        <BillCopy copyName="BẢN KHÁCH HÀNG" />
+        <BillCopy copyName="BẢN CỬA HÀNG" />
       </div>
     </>
   )
